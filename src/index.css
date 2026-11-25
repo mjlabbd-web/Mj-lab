@@ -1,0 +1,40 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-canvas: #0a0a0a;
+    --bg-surface: #141414;
+    --border-hairline: #262626;
+    --accent-orange: #ff5500;
+    --text-primary: #f5f5f5;
+    --text-muted: #b8b8b8;
+  }
+
+  html {
+    font-family: "Noto Sans Bengali", "Hind Siliguri", system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-canvas);
+    color: var(--text-primary);
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: "Hind Siliguri", "Noto Sans Bengali", system-ui, -apple-system, sans-serif;
+  }
+}
+
+.text-balance {
+  text-wrap: balance;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
