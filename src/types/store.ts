@@ -23,6 +23,7 @@ export interface Product {
   newPrice: number;
   stock: number;
   imageUrl: string;
+  images?: string[];
   demoUrl?: string;
   previewVariant: PreviewVariant;
   year: string;

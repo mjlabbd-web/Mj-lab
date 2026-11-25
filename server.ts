@@ -123,6 +123,21 @@ function sanitizeImageUrl(url: unknown): string {
   return '';
 }
 
+function sanitizeImageList(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of raw) {
+    const clean = sanitizeImageUrl(item);
+    if (clean && !seen.has(clean)) {
+      seen.add(clean);
+      out.push(clean);
+      if (out.length >= 5) break;
+    }
+  }
+  return out;
+}
+
 function sanitizeExternalUrl(url: unknown): string {
   if (typeof url !== 'string') return '';
   const trimmed = url.trim();
@@ -518,6 +533,10 @@ async function startServer() {
     let created: Product | null = null;
     await commitStoreUpdate((draft) => {
       const codeNum = String(draft.products.length + 1).padStart(2, '0');
+      const sanitizedImages = sanitizeImageList(body.images);
+      const primaryImage = sanitizedImages[0] || sanitizeImageUrl(body.imageUrl);
+      const finalImages =
+        sanitizedImages.length > 0 ? sanitizedImages : primaryImage ? [primaryImage] : [];
       created = {
         id: `prod-${Date.now()}`,
         code: codeNum,
@@ -528,7 +547,8 @@ async function startServer() {
         oldPrice,
         newPrice,
         stock,
-        imageUrl: sanitizeImageUrl(body.imageUrl),
+        imageUrl: primaryImage,
+        images: finalImages,
         demoUrl: sanitizeExternalUrl(body.demoUrl),
         previewVariant: body.previewVariant || 'ecommerce',
         year: typeof body.year === 'string' && body.year.trim() ? body.year.trim().slice(0, 30) : '2025',
@@ -587,7 +607,15 @@ async function startServer() {
       if (body.oldPrice !== undefined) target.oldPrice = Math.max(0, Number(body.oldPrice) || 0);
       if (body.newPrice !== undefined) target.newPrice = Math.max(0, Number(body.newPrice) || 0);
       if (body.stock !== undefined) target.stock = Math.max(0, Math.floor(Number(body.stock) || 0));
-      if (body.imageUrl !== undefined) target.imageUrl = sanitizeImageUrl(body.imageUrl);
+      if (Array.isArray(body.images)) {
+        const sanitizedImages = sanitizeImageList(body.images);
+        target.images = sanitizedImages;
+        target.imageUrl = sanitizedImages[0] || '';
+      } else if (body.imageUrl !== undefined) {
+        const single = sanitizeImageUrl(body.imageUrl);
+        target.imageUrl = single;
+        target.images = single ? [single] : [];
+      }
       if (body.demoUrl !== undefined) target.demoUrl = sanitizeExternalUrl(body.demoUrl);
       if (body.previewVariant) target.previewVariant = body.previewVariant;
       if (typeof body.year === 'string') target.year = body.year.trim().slice(0, 30);

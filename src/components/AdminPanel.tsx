@@ -96,7 +96,7 @@ export function AdminPanel({onBackToUserPanel}: AdminPanelProps) {
   const [adminData, setAdminData] = useState<AdminStateResponse | null>(null);
   const [reportRange, setReportRange] = useState<'daily' | 'monthly' | 'yearly'>('daily');
   const [globalSearch, setGlobalSearch] = useState('');
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{message: string; tone?: 'default' | 'green'} | null>(null);
 
   // Product Manager states
   const [productSearch, setProductSearch] = useState('');
@@ -109,6 +109,8 @@ export function AdminPanel({onBackToUserPanel}: AdminPanelProps) {
   const [prodNewPrice, setProdNewPrice] = useState('');
   const [prodStock, setProdStock] = useState('10');
   const [prodImageUrl, setProdImageUrl] = useState('');
+  const [prodImages, setProdImages] = useState<string[]>([]);
+  const [uploadSuccessMsg, setUploadSuccessMsg] = useState<string | null>(null);
   const [prodDemoUrl, setProdDemoUrl] = useState('');
   const [prodVariant, setProdVariant] = useState<PreviewVariant>('ecommerce');
   const [prodDelivery, setProdDelivery] = useState('2 Days Delivery');
@@ -128,8 +130,8 @@ export function AdminPanel({onBackToUserPanel}: AdminPanelProps) {
   const [reviewRating, setReviewRating] = useState('5');
   const [reviewComment, setReviewComment] = useState('');
 
-  const showToast = (msg: string) => {
-    setToast(msg);
+  const showToast = (msg: string, tone: 'default' | 'green' = 'default') => {
+    setToast({message: msg, tone});
     window.setTimeout(() => setToast(null), 3200);
   };
 
@@ -275,6 +277,7 @@ export function AdminPanel({onBackToUserPanel}: AdminPanelProps) {
       });
       const data = (await res.json()) as {url?: string; error?: string};
       if (res.ok && data.url) {
+        showToast('ছবি আপলোড সম্পন্ন হয়েছে', 'green');
         return data.url;
       }
       showToast(data.error || 'ইমেজ আপলোড ব্যর্থ হয়েছে');
@@ -295,6 +298,8 @@ export function AdminPanel({onBackToUserPanel}: AdminPanelProps) {
     setProdNewPrice('7500');
     setProdStock('10');
     setProdImageUrl('');
+    setProdImages([]);
+    setUploadSuccessMsg(null);
     setProdDemoUrl('');
     setProdVariant('ecommerce');
     setProdDelivery('2 Days Delivery');
@@ -310,7 +315,16 @@ export function AdminPanel({onBackToUserPanel}: AdminPanelProps) {
     setProdOldPrice(String(product.oldPrice));
     setProdNewPrice(String(product.newPrice));
     setProdStock(String(product.stock));
-    setProdImageUrl(product.imageUrl);
+    const initialImgs = Array.from(
+      new Set(
+        [...(product.images || []), ...(product.imageUrl ? [product.imageUrl] : [])].filter(
+          Boolean,
+        ),
+      ),
+    ).slice(0, 5);
+    setProdImages(initialImgs);
+    setProdImageUrl(initialImgs[0] || '');
+    setUploadSuccessMsg(null);
     setProdDemoUrl(product.demoUrl || '');
     setProdVariant(product.previewVariant);
     setProdDelivery(product.deliveryTime);
@@ -323,13 +337,21 @@ export function AdminPanel({onBackToUserPanel}: AdminPanelProps) {
     e.preventDefault();
     if (!token || !prodName.trim()) return;
 
+    const finalImages =
+      prodImages.length > 0
+        ? prodImages.slice(0, 5)
+        : prodImageUrl.trim()
+          ? [prodImageUrl.trim()]
+          : [];
+
     const payload = {
       name: prodName.trim(),
       categoryId: prodCategoryId,
       oldPrice: Number(prodOldPrice) || 0,
       newPrice: Number(prodNewPrice) || 0,
       stock: Number(prodStock) || 0,
-      imageUrl: prodImageUrl.trim(),
+      imageUrl: finalImages[0] || '',
+      images: finalImages,
       demoUrl: prodDemoUrl.trim(),
       previewVariant: prodVariant,
       deliveryTime: prodDelivery.trim(),
@@ -644,9 +666,17 @@ export function AdminPanel({onBackToUserPanel}: AdminPanelProps) {
     <div className="min-h-screen bg-[#0c0c0c] text-[#f5f5f5] flex">
       {/* Toast feedback */}
       {toast && (
-        <div className="fixed bottom-5 right-5 z-50 flex items-center gap-2 rounded-xl border border-[#ff5500]/50 bg-[#171717] px-4 py-3 text-xs font-semibold text-white shadow-2xl">
-          <CheckCircle2 className="h-4 w-4 text-[#ff5500]" />
-          <span>{toast}</span>
+        <div
+          className={`fixed bottom-5 right-5 z-[70] flex items-center gap-2 rounded-xl border px-3.5 py-2.5 text-xs font-bold shadow-2xl ${
+            toast.tone === 'green'
+              ? 'border-emerald-400/70 bg-emerald-950/95 text-emerald-200'
+              : 'border-[#ff5500]/50 bg-[#171717] text-white'
+          }`}
+        >
+          <CheckCircle2
+            className={`h-4 w-4 ${toast.tone === 'green' ? 'text-emerald-400' : 'text-[#ff5500]'}`}
+          />
+          <span>{toast.message}</span>
         </div>
       )}
 
@@ -2000,27 +2030,62 @@ alter publication supabase_realtime add table persona_store_state;`}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs text-[#cccccc] mb-1">
-                    প্রোডাক্টের ছবি আপলোড
+                    প্রোডাক্টের ছবি আপলোড (সর্বোচ্চ ৫টি · {prodImages.length}/৫)
                   </label>
-                  <label className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-[#3a3a3a] bg-[#0e0e0e] px-3 py-2 text-xs text-[#cccccc] hover:border-[#ff5500] cursor-pointer">
+                  <label
+                    className={`flex items-center justify-center gap-2 rounded-lg border border-dashed px-3 py-2 text-xs transition-colors ${
+                      prodImages.length >= 5
+                        ? 'border-[#282828] bg-[#0a0a0a] text-[#666666] cursor-not-allowed'
+                        : 'border-[#3a3a3a] bg-[#0e0e0e] text-[#cccccc] hover:border-[#ff5500] cursor-pointer'
+                    }`}
+                  >
                     <Upload className="h-3.5 w-3.5 text-[#ff5500]" />
-                    <span>{uploadingImage ? 'আপলোড হচ্ছে...' : 'ছবি সিলেক্ট করুন'}</span>
+                    <span>
+                      {uploadingImage
+                        ? 'আপলোড হচ্ছে...'
+                        : prodImages.length >= 5
+                          ? 'সর্বোচ্চ ৫টি ছবি যুক্ত হয়েছে'
+                          : 'ছবি সিলেক্ট করুন (৪-৫টি)'}
+                    </span>
                     <input
                       type="file"
+                      multiple
+                      disabled={prodImages.length >= 5 || uploadingImage}
                       accept="image/png,image/jpeg,image/webp,image/gif"
                       className="hidden"
                       onChange={async (e: ChangeEvent<HTMLInputElement>) => {
-                        const file = e.target.files?.[0];
-                        if (!file) return;
-                        const uploaded = await uploadImageFile(file);
-                        if (uploaded) setProdImageUrl(uploaded);
+                        const files = Array.from(e.target.files || []);
+                        e.target.value = '';
+                        if (files.length === 0) return;
+                        const remaining = 5 - prodImages.length;
+                        const toUpload = files.slice(0, remaining);
+                        const added: string[] = [];
+                        for (const file of toUpload) {
+                          const uploaded = await uploadImageFile(file);
+                          if (uploaded) added.push(uploaded);
+                        }
+                        if (added.length > 0) {
+                          setProdImages((prev) => {
+                            const next = [...prev, ...added].slice(0, 5);
+                            setProdImageUrl(next[0] || '');
+                            return next;
+                          });
+                          setUploadSuccessMsg('ছবি আপলোড সম্পন্ন হয়েছে');
+                          window.setTimeout(() => setUploadSuccessMsg(null), 4000);
+                        }
                       }}
                     />
                   </label>
+                  {uploadSuccessMsg && (
+                    <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-md border border-emerald-500/60 bg-emerald-950/90 px-2.5 py-1 text-[11px] font-bold text-emerald-300">
+                      <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" />
+                      <span>{uploadSuccessMsg}</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs text-[#cccccc] mb-1">
-                    অথবা ছবির URL / প্রিভিউ স্টাইল
+                    প্রিভিউ স্টাইল (ছবি না দিলে)
                   </label>
                   <select
                     value={prodVariant}
@@ -2036,21 +2101,42 @@ alter publication supabase_realtime add table persona_store_state;`}
                 </div>
               </div>
 
-              {prodImageUrl && (
-                <div className="flex items-center gap-3 rounded-lg border border-[#2a2a2a] bg-[#0e0e0e] p-2">
-                  <img
-                    src={prodImageUrl}
-                    alt="Preview"
-                    className="h-12 w-16 rounded object-cover"
-                  />
-                  <span className="text-xs text-[#b8b8b8] truncate flex-1">{prodImageUrl}</span>
-                  <button
-                    type="button"
-                    onClick={() => setProdImageUrl('')}
-                    className="text-xs text-red-400 hover:underline cursor-pointer"
-                  >
-                    সরান
-                  </button>
+              {prodImages.length > 0 && (
+                <div className="rounded-lg border border-[#2a2a2a] bg-[#0e0e0e] p-2.5">
+                  <div className="text-[11px] text-[#9e9e9e] mb-2">
+                    আপলোডকৃত ছবিসমূহ ({prodImages.length}/৫) — প্রথম ছবিটি কভার হিসেবে দেখাবে
+                  </div>
+                  <div className="grid grid-cols-5 gap-2">
+                    {prodImages.map((imgUrl, idx) => (
+                      <div
+                        key={`${imgUrl}-${idx}`}
+                        className="relative group rounded-md overflow-hidden border border-[#2e2e2e] bg-[#141414]"
+                      >
+                        <img
+                          src={imgUrl}
+                          alt={`Product ${idx + 1}`}
+                          className="h-14 w-full object-cover"
+                        />
+                        <span className="absolute top-1 left-1 rounded bg-black/75 px-1 text-[9px] font-bold text-white">
+                          {idx + 1}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setProdImages((prev) => {
+                              const next = prev.filter((_, i) => i !== idx);
+                              setProdImageUrl(next[0] || '');
+                              return next;
+                            })
+                          }
+                          aria-label="ছবি সরান"
+                          className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-white hover:bg-red-500 cursor-pointer"
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
 
