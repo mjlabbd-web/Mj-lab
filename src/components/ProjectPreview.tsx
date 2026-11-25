@@ -1,3 +1,4 @@
+import {useEffect, useState} from 'react';
 import {PreviewVariant} from '../types/store';
 
 interface ProjectPreviewProps {
@@ -13,17 +14,24 @@ export function ProjectPreview({
   imageUrl,
   compact = false,
 }: ProjectPreviewProps) {
+  const [imgError, setImgError] = useState(false);
+
+  useEffect(() => {
+    setImgError(false);
+  }, [imageUrl]);
+
   const heightClass = compact
     ? 'h-[96px] min-[400px]:h-[112px] sm:h-[165px] lg:h-[180px]'
     : 'h-[185px]';
 
-  if (imageUrl) {
+  if (imageUrl && !imgError) {
     return (
       <div className={`relative ${heightClass} w-full overflow-hidden bg-[#141414]`}>
         <img
           src={imageUrl}
           alt={title}
           referrerPolicy="no-referrer"
+          onError={() => setImgError(true)}
           className="h-full w-full object-cover"
         />
       </div>

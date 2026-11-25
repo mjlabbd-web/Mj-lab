@@ -42,12 +42,14 @@ export function ProjectModal({project, whatsappNumber, onClose}: ProjectModalPro
   const [submitting, setSubmitting] = useState(false);
   const [orderMessage, setOrderMessage] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [failedImages, setFailedImages] = useState<string[]>([]);
 
   useEffect(() => {
     setShowOrderForm(false);
     setOrderMessage(null);
     setQuantity(1);
     setActiveImageIndex(0);
+    setFailedImages([]);
   }, [project?.id]);
 
   useEffect(() => {
@@ -67,7 +69,9 @@ export function ProjectModal({project, whatsappNumber, onClose}: ProjectModalPro
     new Set(
       [...(project.images || []), ...(project.imageUrl ? [project.imageUrl] : [])].filter(Boolean),
     ),
-  ).slice(0, 5);
+  )
+    .filter((url) => !failedImages.includes(url))
+    .slice(0, 5);
 
   const safeActiveIndex =
     galleryImages.length > 0 ? Math.min(activeImageIndex, galleryImages.length - 1) : 0;
@@ -140,6 +144,14 @@ export function ProjectModal({project, whatsappNumber, onClose}: ProjectModalPro
                   src={galleryImages[safeActiveIndex]}
                   alt={`${project.name} স্ক্রিনশট ${safeActiveIndex + 1}`}
                   referrerPolicy="no-referrer"
+                  onError={() => {
+                    const failedUrl = galleryImages[safeActiveIndex];
+                    if (failedUrl) {
+                      setFailedImages((prev) =>
+                        prev.includes(failedUrl) ? prev : [...prev, failedUrl],
+                      );
+                    }
+                  }}
                   className="h-full w-full object-contain"
                 />
                 {galleryImages.length > 1 && (

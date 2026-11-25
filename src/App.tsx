@@ -466,7 +466,7 @@ export default function App() {
                     <ProjectPreview
                       variant={project.previewVariant}
                       title={project.name}
-                      imageUrl={project.imageUrl}
+                      imageUrl={project.imageUrl || project.images?.[0]}
                       compact
                     />
 
@@ -584,7 +584,7 @@ export default function App() {
                     <ProjectPreview
                       variant={project.previewVariant}
                       title={project.name}
-                      imageUrl={project.imageUrl}
+                      imageUrl={project.imageUrl || project.images?.[0]}
                     />
                     <div className="p-4 border-t border-[#242424] bg-[#111111] flex flex-col justify-between">
                       <div>

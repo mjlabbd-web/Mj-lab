@@ -109,7 +109,11 @@ function sanitizeImageUrl(url: unknown): string {
   if (typeof url !== 'string') return '';
   const trimmed = url.trim();
   if (!trimmed) return '';
-  if (trimmed.startsWith('/assets/') || trimmed.startsWith('/uploads/')) {
+  if (
+    trimmed.startsWith('/assets/') ||
+    trimmed.startsWith('/uploads/') ||
+    trimmed.startsWith('/api/uploads/')
+  ) {
     return trimmed;
   }
   try {
@@ -237,6 +241,7 @@ async function startServer() {
 
   // Serve uploaded assets securely
   app.use('/uploads', express.static(UPLOADS_DIR));
+  app.use('/api/uploads', express.static(UPLOADS_DIR));
 
   const server = http.createServer(app);
   const wss = new WebSocketServer({server, path: '/ws'});

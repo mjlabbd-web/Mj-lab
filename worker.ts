@@ -41,6 +41,7 @@ const textEncoder = new TextEncoder();
 let ephemeralSessionSecret: string | null = null;
 let memoryFallbackStore: FullStoreState = structuredClone(DEFAULT_FULL_STORE);
 let memoryFallbackAuth: AdminAuthRecord | null = null;
+const memoryUploads = new Map<string, UploadRecord>();
 
 function getSessionSecret(env: WorkerEnv): string {
   const configured = env.SESSION_SECRET?.trim();
@@ -211,7 +212,11 @@ function sanitizeImageUrl(url: unknown): string {
   if (typeof url !== 'string') return '';
   const trimmed = url.trim();
   if (!trimmed) return '';
-  if (trimmed.startsWith('/assets/') || trimmed.startsWith('/uploads/')) {
+  if (
+    trimmed.startsWith('/assets/') ||
+    trimmed.startsWith('/uploads/') ||
+    trimmed.startsWith('/api/uploads/')
+  ) {
     return trimmed;
   }
   try {
@@ -387,45 +392,81 @@ export default {
     const {url: supabaseUrl, anonKey: supabaseAnonKey, serviceKey} = resolveSupabaseKeys(env);
     const supabaseAdmin = getSupabaseAdmin(env);
 
-    // Serve uploaded images stored in Supabase
-    if (method === 'GET' && pathname.startsWith('/uploads/')) {
-      const fileId = pathname.slice('/uploads/'.length);
-      if (/^[a-zA-Z0-9_.-]+$/.test(fileId) && supabaseAdmin) {
-        try {
-          const {data} = await supabaseAdmin
-            .from('persona_store_state')
-            .select('payload')
-            .eq('id', `upload_${fileId}`)
-            .maybeSingle();
-          if (data?.payload && typeof data.payload === 'object') {
-            const rec = data.payload as UploadRecord;
-            if (
-              rec.base64 &&
-              (rec.mimeType === 'image/png' ||
-                rec.mimeType === 'image/jpeg' ||
-                rec.mimeType === 'image/webp' ||
-                rec.mimeType === 'image/gif')
-            ) {
-              const binary = atob(rec.base64);
-              const bytes = new Uint8Array(binary.length);
-              for (let i = 0; i < binary.length; i++) {
-                bytes[i] = binary.charCodeAt(i);
+    // Serve uploaded images stored in memory or Supabase
+    if (
+      method === 'GET' &&
+      (pathname.startsWith('/api/uploads/') || pathname.startsWith('/uploads/'))
+    ) {
+      const fileId = pathname.startsWith('/api/uploads/')
+        ? pathname.slice('/api/uploads/'.length)
+        : pathname.slice('/uploads/'.length);
+
+      if (/^[a-zA-Z0-9_.-]+$/.test(fileId)) {
+        const mem = memoryUploads.get(fileId);
+        const serveRecord = (rec: UploadRecord) => {
+          const binary = atob(rec.base64);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i);
+          }
+          return new Response(bytes, {
+            status: 200,
+            headers: {
+              'Content-Type': rec.mimeType,
+              'Cache-Control': 'public, max-age=31536000, immutable',
+              'X-Content-Type-Options': 'nosniff',
+            },
+          });
+        };
+
+        if (mem) {
+          return serveRecord(mem);
+        }
+
+        if (supabaseAdmin) {
+          try {
+            const {data} = await supabaseAdmin
+              .from('persona_store_state')
+              .select('payload')
+              .eq('id', `upload_${fileId}`)
+              .maybeSingle();
+            if (data?.payload && typeof data.payload === 'object') {
+              const rec = data.payload as UploadRecord;
+              if (
+                rec.base64 &&
+                (rec.mimeType === 'image/png' ||
+                  rec.mimeType === 'image/jpeg' ||
+                  rec.mimeType === 'image/webp' ||
+                  rec.mimeType === 'image/gif')
+              ) {
+                memoryUploads.set(fileId, rec);
+                return serveRecord(rec);
               }
-              return new Response(bytes, {
+            }
+          } catch {
+            // Try Storage download below
+          }
+
+          try {
+            const {data: blobData, error: dlError} = await supabaseAdmin.storage
+              .from('persona-uploads')
+              .download(fileId);
+            if (!dlError && blobData) {
+              return new Response(blobData, {
                 status: 200,
                 headers: {
-                  'Content-Type': rec.mimeType,
+                  'Content-Type': blobData.type || 'image/jpeg',
                   'Cache-Control': 'public, max-age=31536000, immutable',
                   'X-Content-Type-Options': 'nosniff',
                 },
               });
             }
+          } catch {
+            // Return 404 below
           }
-        } catch {
-          // Fall through to ASSETS
         }
       }
-      return env.ASSETS.fetch(request);
+      return new Response('Image not found', {status: 404});
     }
 
     // ---------- Public APIs ----------
@@ -615,20 +656,55 @@ export default {
         const randBytes = crypto.getRandomValues(new Uint8Array(4));
         const randHex = Array.from(randBytes, (b) => b.toString(16).padStart(2, '0')).join('');
         const safeFilename = `img_${Date.now()}_${randHex}.${ext}`;
+        const uploadRec: UploadRecord = {mimeType, base64: match[2]};
+        memoryUploads.set(safeFilename, uploadRec);
 
-        if (!supabaseAdmin) {
-          return jsonResponse(
-            {error: 'Configure Supabase secrets so image uploads persist on Workers'},
-            400,
-          );
+        if (supabaseAdmin) {
+          // 1. Prefer Supabase Storage public bucket (works even before SQL table is created)
+          try {
+            const binary = atob(match[2]);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+              bytes[i] = binary.charCodeAt(i);
+            }
+
+            const bucketCheck = await supabaseAdmin.storage.getBucket('persona-uploads');
+            if (bucketCheck.error) {
+              await supabaseAdmin.storage.createBucket('persona-uploads', {public: true});
+            }
+
+            const {error: storageErr} = await supabaseAdmin.storage
+              .from('persona-uploads')
+              .upload(safeFilename, bytes, {
+                contentType: mimeType,
+                upsert: true,
+              });
+
+            if (!storageErr) {
+              const {data: pub} = supabaseAdmin.storage
+                .from('persona-uploads')
+                .getPublicUrl(safeFilename);
+              if (pub?.publicUrl) {
+                return jsonResponse({url: pub.publicUrl}, 201);
+              }
+            }
+          } catch {
+            // Fall through to DB table / worker endpoint
+          }
+
+          // 2. Fallback: persist inside persona_store_state table
+          try {
+            await supabaseAdmin.from('persona_store_state').upsert({
+              id: `upload_${safeFilename}`,
+              payload: uploadRec,
+              updated_at: new Date().toISOString(),
+            });
+          } catch {
+            // Memory cache fallback still serves /api/uploads/:filename
+          }
         }
 
-        await supabaseAdmin.from('persona_store_state').upsert({
-          id: `upload_${safeFilename}`,
-          payload: {mimeType, base64: match[2]} satisfies UploadRecord,
-          updated_at: new Date().toISOString(),
-        });
-        return jsonResponse({url: `/uploads/${safeFilename}`}, 201);
+        return jsonResponse({url: `/api/uploads/${safeFilename}`}, 201);
       }
 
       if (method === 'POST' && pathname === '/api/admin/products') {

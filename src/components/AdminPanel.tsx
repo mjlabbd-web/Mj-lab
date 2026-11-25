@@ -253,20 +253,56 @@ export function AdminPanel({onBackToUserPanel}: AdminPanelProps) {
     }
   };
 
+  const readFileAsDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result || ''));
+      reader.onerror = () => reject(new Error('Read failed'));
+      reader.readAsDataURL(file);
+    });
+
+  const compressImageToDataUrl = async (file: File): Promise<string> => {
+    const rawDataUrl = await readFileAsDataUrl(file);
+    if (file.type === 'image/gif' || file.size <= 1.2 * 1024 * 1024) {
+      return rawDataUrl;
+    }
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const maxDim = 1400;
+        const scale = Math.min(1, maxDim / Math.max(img.width || 1, img.height || 1));
+        const width = Math.max(1, Math.round(img.width * scale));
+        const height = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(rawDataUrl);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        const targetType = file.type === 'image/png' ? 'image/webp' : 'image/jpeg';
+        const compressed = canvas.toDataURL(targetType, 0.85);
+        resolve(compressed.length > 0 && compressed.length < rawDataUrl.length ? compressed : rawDataUrl);
+      };
+      img.onerror = () => resolve(rawDataUrl);
+      img.src = rawDataUrl;
+    });
+  };
+
   const uploadImageFile = async (file: File): Promise<string | null> => {
     if (!token) return null;
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('ছবির সাইজ ২ MB এর কম হতে হবে');
-      return null;
-    }
     setUploadingImage(true);
     try {
-      const dataUrl = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(String(reader.result || ''));
-        reader.onerror = () => reject(new Error('Read failed'));
-        reader.readAsDataURL(file);
-      });
+      const dataUrl = await compressImageToDataUrl(file);
+      const base64Part = dataUrl.split(',')[1] || '';
+      const estimatedBytes = Math.ceil((base64Part.length * 3) / 4);
+      if (estimatedBytes > 2 * 1024 * 1024) {
+        showToast('ছবির সাইজ ২ MB এর কম হতে হবে');
+        return null;
+      }
       const res = await fetch('/api/admin/upload', {
         method: 'POST',
         headers: {
@@ -2045,7 +2081,7 @@ alter publication supabase_realtime add table persona_store_state;`}
                         ? 'আপলোড হচ্ছে...'
                         : prodImages.length >= 5
                           ? 'সর্বোচ্চ ৫টি ছবি যুক্ত হয়েছে'
-                          : 'ছবি সিলেক্ট করুন (৪-৫টি)'}
+                          : 'ছবি সিলেক্ট করুন (১–৫টি)'}
                     </span>
                     <input
                       type="file"
