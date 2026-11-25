@@ -74,6 +74,17 @@ export function ProjectModal({project, whatsappNumber, onClose}: ProjectModalPro
     }
   };
 
+  const safeDemoUrl = (() => {
+    const raw = project.demoUrl?.trim();
+    if (!raw) return '';
+    try {
+      const parsed = new URL(/^https?:\/\//i.test(raw) ? raw : `https://${raw}`);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:' ? parsed.toString() : '';
+    } catch {
+      return '';
+    }
+  })();
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
@@ -215,6 +226,17 @@ export function ProjectModal({project, whatsappNumber, onClose}: ProjectModalPro
               {project.stack.join(' · ')}
             </div>
             <div className="flex flex-wrap items-center gap-2.5">
+              {safeDemoUrl && (
+                <a
+                  href={safeDemoUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center gap-1.5 rounded-full border border-[#ff5500] bg-[#1d110a] px-4 py-2.5 text-xs font-bold text-white hover:bg-[#ff5500] transition-colors whitespace-nowrap shrink-0"
+                >
+                  <span>ডেমো লিংক</span>
+                  <ArrowUpRight className="h-4 w-4" />
+                </a>
+              )}
               <button
                 type="button"
                 onClick={() => setShowOrderForm((prev) => !prev)}

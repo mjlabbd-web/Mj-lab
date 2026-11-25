@@ -23,6 +23,7 @@ export interface Product {
   newPrice: number;
   stock: number;
   imageUrl: string;
+  demoUrl?: string;
   previewVariant: PreviewVariant;
   year: string;
   deliveryTime: string;
@@ -115,7 +116,7 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   heroTitleLine1: 'মোঃ মোমিন',
   heroTitleLine2: 'ইসলাম',
   heroSubtitle: 'আমি একজন ওয়েবসাইট ও অ্যাপ ডেভেলপার',
-  bannerImageUrl: '/assets/profile-hero.png',
+  bannerImageUrl: '/assets/aistudio/file_000000000f24820899c550a2115ccca0_a16ac199.png',
   whatsappNumber: '8801923948150',
   displayPhone: '+880 1923-948150',
   locationText: 'পল্লীবিদ্যুৎ সরকারবাড়ি বাজার',

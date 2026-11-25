@@ -123,6 +123,22 @@ function sanitizeImageUrl(url: unknown): string {
   return '';
 }
 
+function sanitizeExternalUrl(url: unknown): string {
+  if (typeof url !== 'string') return '';
+  const trimmed = url.trim();
+  if (!trimmed) return '';
+  const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const parsed = new URL(candidate);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+  } catch {
+    return '';
+  }
+  return '';
+}
+
 function hashPassword(password: string, saltHex?: string): {salt: string; hash: string} {
   const salt = saltHex || crypto.randomBytes(16).toString('hex');
   const derived = crypto.scryptSync(password, salt, 64).toString('hex');
@@ -513,6 +529,7 @@ async function startServer() {
         newPrice,
         stock,
         imageUrl: sanitizeImageUrl(body.imageUrl),
+        demoUrl: sanitizeExternalUrl(body.demoUrl),
         previewVariant: body.previewVariant || 'ecommerce',
         year: typeof body.year === 'string' && body.year.trim() ? body.year.trim().slice(0, 30) : '2025',
         deliveryTime:
@@ -571,6 +588,7 @@ async function startServer() {
       if (body.newPrice !== undefined) target.newPrice = Math.max(0, Number(body.newPrice) || 0);
       if (body.stock !== undefined) target.stock = Math.max(0, Math.floor(Number(body.stock) || 0));
       if (body.imageUrl !== undefined) target.imageUrl = sanitizeImageUrl(body.imageUrl);
+      if (body.demoUrl !== undefined) target.demoUrl = sanitizeExternalUrl(body.demoUrl);
       if (body.previewVariant) target.previewVariant = body.previewVariant;
       if (typeof body.year === 'string') target.year = body.year.trim().slice(0, 30);
       if (typeof body.deliveryTime === 'string') {
@@ -691,7 +709,8 @@ async function startServer() {
       }
       if (body.bannerImageUrl !== undefined) {
         const sanitized = sanitizeImageUrl(body.bannerImageUrl);
-        s.bannerImageUrl = sanitized || '/assets/profile-hero.png';
+        s.bannerImageUrl =
+          sanitized || '/assets/aistudio/file_000000000f24820899c550a2115ccca0_a16ac199.png';
       }
       if (typeof body.whatsappNumber === 'string') {
         s.whatsappNumber = body.whatsappNumber.replace(/[^0-9]/g, '').slice(0, 20);

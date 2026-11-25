@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import {
   ArrowRight,
+  ExternalLink,
   Facebook,
   Instagram,
   LayoutGrid,
@@ -12,7 +13,6 @@ import {
   ShoppingBag,
   ShoppingCart,
   Star,
-  Twitter,
   Users,
   Youtube,
 } from 'lucide-react';
@@ -22,6 +22,24 @@ import {ProjectPreview} from './components/ProjectPreview';
 import {ProjectModal} from './components/ProjectModal';
 import {InfoModal, SearchModal} from './components/InfoModals';
 import {AdminPanel} from './components/AdminPanel';
+import {LivePurchaseNotification} from './components/LivePurchaseNotification';
+
+const DEFAULT_VISITING_CARD_BANNER =
+  '/assets/aistudio/file_000000000f24820899c550a2115ccca0_a16ac199.png';
+
+function getSafeDemoUrl(raw?: string): string | null {
+  const trimmed = raw?.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = new URL(/^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`);
+    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+      return parsed.toString();
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
 
 function WhatsAppOutlineIcon({className}: {className?: string}) {
   return (
@@ -55,6 +73,9 @@ export default function App() {
   const {products, categories, siteSettings} = store;
 
   const [isAdminRoute, setIsAdminRoute] = useState<boolean>(isAdminPath);
+  const [activeServiceCard, setActiveServiceCard] = useState<'all' | 'whatsapp' | 'ecommerce'>(
+    'all',
+  );
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>('all');
   const [selectedProject, setSelectedProject] = useState<Product | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -179,109 +200,26 @@ export default function App() {
       </header>
 
       <main className="flex-1">
-        {/* Hero Banner Section */}
+        {/* Hero Banner Section — Exact Visiting Card Display */}
         <section
           id="home"
-          className="relative overflow-hidden border-b border-[#1c1c1c] bg-[#0b0b0b]"
+          className="relative overflow-hidden border-b border-[#1c1c1c] bg-[#0a0a0a] py-2.5 sm:py-4"
         >
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0"
-            style={{
-              background:
-                'radial-gradient(ellipse at 65% 85%, rgba(255, 85, 0, 0.25) 0%, transparent 50%), linear-gradient(90deg, #0a0a0a 0%, #100c0a 48%, #150d08 100%)',
-            }}
-          />
-
-          <div className="relative mx-auto grid w-full max-w-[1120px] px-3.5 sm:px-6 grid-cols-12 items-stretch min-h-[215px] min-[400px]:min-h-[245px] sm:min-h-[360px] lg:min-h-[420px]">
-            {/* Left Copy — Comfortable Mobile App Scale */}
-            <div className="col-span-6 py-6 sm:py-10 lg:py-14 flex flex-col justify-center z-10">
-              <div className="text-[11px] min-[400px]:text-xs sm:text-sm font-extrabold tracking-wide text-[#ff5500]">
-                {siteSettings.heroEyebrow}
-              </div>
-              <h1 className="mt-1.5 sm:mt-2.5 font-display text-[28px] min-[400px]:text-[34px] sm:text-5xl lg:text-[66px] font-extrabold leading-[1.02] tracking-tight text-white">
-                {siteSettings.heroTitleLine1}
-                <br />
-                {siteSettings.heroTitleLine2}
-              </h1>
-              <p className="mt-2 sm:mt-3.5 text-[11px] min-[400px]:text-xs sm:text-sm lg:text-base font-semibold text-[#e8e8e8] leading-snug">
-                {siteSettings.heroSubtitle}
-              </p>
-
-              <div className="mt-3.5 sm:mt-5 flex items-center gap-2 sm:gap-3" aria-label="সামাজিক মাধ্যম">
-                <button
-                  type="button"
-                  onClick={() => scrollToSection('all-projects', 'all')}
-                  aria-label="ইউটিউব"
-                  className="flex h-8 w-8 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-[#3d3d3d] bg-[#141414]/85 text-white transition-colors hover:border-[#ff5500] hover:bg-[#ff5500] cursor-pointer"
-                >
-                  <Youtube className="h-4 w-4 sm:h-5 sm:w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollToSection('all-projects', 'all')}
-                  aria-label="টুইটার"
-                  className="flex h-8 w-8 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-[#3d3d3d] bg-[#141414]/85 text-white transition-colors hover:border-[#ff5500] hover:bg-[#ff5500] cursor-pointer"
-                >
-                  <Twitter className="h-4 w-4 sm:h-5 sm:w-5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => scrollToSection('all-projects', ecommerceCat?.id || 'all')}
-                  aria-label="ইনস্টাগ্রাম"
-                  className="flex h-8 w-8 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-[#3d3d3d] bg-[#141414]/85 text-white transition-colors hover:border-[#ff5500] hover:bg-[#ff5500] cursor-pointer"
-                >
-                  <Instagram className="h-4 w-4 sm:h-5 sm:w-5" />
-                </button>
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="হোয়াটসঅ্যাপ চ্যানেল"
-                  className="flex h-8 w-8 sm:h-11 sm:w-11 items-center justify-center rounded-full border border-[#3d3d3d] bg-[#141414]/85 text-white transition-colors hover:border-[#ff5500] hover:bg-[#ff5500]"
-                >
-                  <Youtube className="h-4 w-4 sm:h-5 sm:w-5" />
-                </a>
-              </div>
-            </div>
-
-            {/* Right Portrait — Matched to Website Dark & Orange Glow */}
-            <div className="col-span-6 relative flex items-end justify-end">
-              <div className="relative h-full w-full overflow-hidden">
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_55%_45%,rgba(255,85,0,0.22),transparent_65%)]"
+          <div className="mx-auto w-full max-w-[1120px] px-3 sm:px-6">
+            <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-[#2a2a2a] bg-[#0d0d0d] shadow-2xl">
+              {!heroImageError ? (
+                <img
+                  src={siteSettings.bannerImageUrl || DEFAULT_VISITING_CARD_BANNER}
+                  alt="Md Momin Islam — Visiting Card Banner"
+                  referrerPolicy="no-referrer"
+                  onError={() => setHeroImageError(true)}
+                  className="block w-full h-auto object-contain"
                 />
-                {!heroImageError ? (
-                  <img
-                    src={siteSettings.bannerImageUrl || '/assets/profile-hero.png'}
-                    alt={`${siteSettings.heroTitleLine1} ${siteSettings.heroTitleLine2}`}
-                    referrerPolicy="no-referrer"
-                    onError={() => setHeroImageError(true)}
-                    className="h-full w-full object-cover object-[center_12%]"
-                  />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#2b1408] to-[#0c0c0c] text-white/70 text-sm">
-                    {siteSettings.heroTitleLine1} {siteSettings.heroTitleLine2}
-                  </div>
-                )}
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-0 left-0 w-10 sm:w-24 bg-gradient-to-r from-[#0e0b09] to-transparent"
-                />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-y-0 right-0 w-6 sm:w-16 bg-gradient-to-l from-[#120b08] to-transparent"
-                />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-0 top-0 h-5 sm:h-10 bg-gradient-to-b from-[#0b0b0b]/80 to-transparent"
-                />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-8 sm:h-14 bg-gradient-to-t from-[#0a0a0a] to-transparent"
-                />
-              </div>
+              ) : (
+                <div className="flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-[#2b1408] to-[#0c0c0c] text-white/80 text-base font-bold">
+                  {siteSettings.heroTitleLine1} {siteSettings.heroTitleLine2}
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -318,40 +256,75 @@ export default function App() {
               </button>
             </div>
 
-            {/* 3 Service Cards — Larger Mobile App Scale */}
+            {/* 3 Service Cards — Active Clicked Card Turns Orange */}
             <div className="grid grid-cols-3 gap-2.5 sm:gap-5">
               <article
-                onClick={() => scrollToSection('all-projects', 'all')}
+                onClick={() => {
+                  setActiveServiceCard('all');
+                  scrollToSection('all-projects', 'all');
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
+                    setActiveServiceCard('all');
                     scrollToSection('all-projects', 'all');
                   }
                 }}
-                className="flex min-h-[135px] sm:min-h-[205px] cursor-pointer flex-col items-start justify-between rounded-xl border border-[#ff6b26] bg-gradient-to-br from-[#ff5e00] to-[#ff4500] p-3 sm:p-6 text-white transition-transform duration-200 hover:-translate-y-0.5"
+                className={`flex min-h-[135px] sm:min-h-[205px] cursor-pointer flex-col items-start justify-between rounded-xl border p-3 sm:p-6 transition-all duration-200 hover:-translate-y-0.5 ${
+                  activeServiceCard === 'all'
+                    ? 'border-[#ff6b26] bg-gradient-to-br from-[#ff5e00] to-[#ff4500] text-white'
+                    : 'border-[#262626] bg-[#161616] text-white hover:border-[#ff5500]'
+                }`}
               >
                 <div>
                   <LayoutGrid className="h-6 w-6 sm:h-8 sm:w-8 mb-2 sm:mb-4 text-white" />
                   <h3 className="text-xs sm:text-lg font-bold leading-snug">সব প্রজেক্ট</h3>
-                  <p className="mt-1 sm:mt-1.5 text-[10px] sm:text-sm text-white/90 leading-snug sm:leading-relaxed">
+                  <p
+                    className={`mt-1 sm:mt-1.5 text-[10px] sm:text-sm leading-snug sm:leading-relaxed ${
+                      activeServiceCard === 'all' ? 'text-white/90' : 'text-[#c2c2c2]'
+                    }`}
+                  >
                     ওয়েবসাইট, অ্যাপ ও সব ক্রিয়েটিভ কাজ দেখুন।
                   </p>
                 </div>
-                <span className="mt-2.5 sm:mt-4 inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold text-white">
+                <span
+                  className={`mt-2.5 sm:mt-4 inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold ${
+                    activeServiceCard === 'all' ? 'text-white' : 'text-[#ff5500]'
+                  }`}
+                >
                   <span>দেখুন</span>
                   <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </span>
               </article>
 
-              <article className="flex min-h-[135px] sm:min-h-[205px] flex-col items-start justify-between rounded-xl border border-[#262626] bg-[#161616] p-3 sm:p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#ff5500]">
+              <article
+                onClick={() => setActiveServiceCard('whatsapp')}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setActiveServiceCard('whatsapp');
+                  }
+                }}
+                className={`flex min-h-[135px] sm:min-h-[205px] cursor-pointer flex-col items-start justify-between rounded-xl border p-3 sm:p-6 transition-all duration-200 hover:-translate-y-0.5 ${
+                  activeServiceCard === 'whatsapp'
+                    ? 'border-[#ff6b26] bg-gradient-to-br from-[#ff5e00] to-[#ff4500] text-white'
+                    : 'border-[#262626] bg-[#161616] text-white hover:border-[#ff5500]'
+                }`}
+              >
                 <div>
                   <WhatsAppOutlineIcon className="h-6 w-6 sm:h-8 sm:w-8 mb-2 sm:mb-4 text-white" />
                   <h3 className="text-xs sm:text-lg font-bold text-white leading-snug">
                     হোয়াটসঅ্যাপ
                   </h3>
-                  <p className="mt-1 sm:mt-1.5 text-[10px] sm:text-sm text-[#c2c2c2] leading-snug sm:leading-relaxed">
+                  <p
+                    className={`mt-1 sm:mt-1.5 text-[10px] sm:text-sm leading-snug sm:leading-relaxed ${
+                      activeServiceCard === 'whatsapp' ? 'text-white/90' : 'text-[#c2c2c2]'
+                    }`}
+                  >
                     যেকোনো কাজ বা পরামর্শের জন্য সরাসরি মেসেজ দিন।
                   </p>
                 </div>
@@ -359,7 +332,15 @@ export default function App() {
                   href={whatsappUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="mt-2.5 sm:mt-4 inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold text-[#ff5500] hover:text-[#ff7533]"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveServiceCard('whatsapp');
+                  }}
+                  className={`mt-2.5 sm:mt-4 inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold ${
+                    activeServiceCard === 'whatsapp'
+                      ? 'text-white'
+                      : 'text-[#ff5500] hover:text-[#ff7533]'
+                  }`}
                 >
                   <span>চ্যাট করুন</span>
                   <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -367,27 +348,43 @@ export default function App() {
               </article>
 
               <article
-                onClick={() => scrollToSection('all-projects', ecommerceCat?.id || 'all')}
+                onClick={() => {
+                  setActiveServiceCard('ecommerce');
+                  scrollToSection('all-projects', ecommerceCat?.id || 'all');
+                }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
+                    setActiveServiceCard('ecommerce');
                     scrollToSection('all-projects', ecommerceCat?.id || 'all');
                   }
                 }}
-                className="flex min-h-[135px] sm:min-h-[205px] cursor-pointer flex-col items-start justify-between rounded-xl border border-[#262626] bg-[#161616] p-3 sm:p-6 transition-all duration-200 hover:-translate-y-0.5 hover:border-[#ff5500]"
+                className={`flex min-h-[135px] sm:min-h-[205px] cursor-pointer flex-col items-start justify-between rounded-xl border p-3 sm:p-6 transition-all duration-200 hover:-translate-y-0.5 ${
+                  activeServiceCard === 'ecommerce'
+                    ? 'border-[#ff6b26] bg-gradient-to-br from-[#ff5e00] to-[#ff4500] text-white'
+                    : 'border-[#262626] bg-[#161616] text-white hover:border-[#ff5500]'
+                }`}
               >
                 <div>
                   <ShoppingCart className="h-6 w-6 sm:h-8 sm:w-8 mb-2 sm:mb-4 text-white" />
                   <h3 className="text-xs sm:text-lg font-bold text-white leading-snug">
                     ই-কমার্স শপ
                   </h3>
-                  <p className="mt-1 sm:mt-1.5 text-[10px] sm:text-sm text-[#c2c2c2] leading-snug sm:leading-relaxed">
+                  <p
+                    className={`mt-1 sm:mt-1.5 text-[10px] sm:text-sm leading-snug sm:leading-relaxed ${
+                      activeServiceCard === 'ecommerce' ? 'text-white/90' : 'text-[#c2c2c2]'
+                    }`}
+                  >
                     আপনার ব্যবসার জন্য আধুনিক অনলাইন স্টোর।
                   </p>
                 </div>
-                <span className="mt-2.5 sm:mt-4 inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold text-[#ff5500]">
+                <span
+                  className={`mt-2.5 sm:mt-4 inline-flex items-center gap-1 text-[10px] sm:text-xs font-bold ${
+                    activeServiceCard === 'ecommerce' ? 'text-white' : 'text-[#ff5500]'
+                  }`}
+                >
                   <span>দেখুন</span>
                   <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </span>
@@ -450,37 +447,69 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-3 gap-2.5 sm:gap-5">
-              {homeProjects.map((project) => (
-                <article
-                  key={project.id}
-                  onClick={() => setSelectedProject(project)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelectedProject(project);
-                    }
-                  }}
-                  className="group cursor-pointer overflow-hidden rounded-xl border border-[#2b2b2b] bg-[#141414] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#ff5500] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff5500]"
-                >
-                  <ProjectPreview
-                    variant={project.previewVariant}
-                    title={project.name}
-                    imageUrl={project.imageUrl}
-                    compact
-                  />
+              {homeProjects.map((project) => {
+                const demoUrl = getSafeDemoUrl(project.demoUrl);
+                return (
+                  <article
+                    key={project.id}
+                    onClick={() => setSelectedProject(project)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedProject(project);
+                      }
+                    }}
+                    className="group cursor-pointer overflow-hidden rounded-xl border border-[#2b2b2b] bg-[#141414] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#ff5500] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#ff5500]"
+                  >
+                    <ProjectPreview
+                      variant={project.previewVariant}
+                      title={project.name}
+                      imageUrl={project.imageUrl}
+                      compact
+                    />
 
-                  <div className="flex items-center justify-between gap-1.5 sm:gap-3 border-t border-[#242424] bg-[#111111] px-2.5 py-2 sm:px-4 sm:py-3">
-                    <h3 className="text-[11px] sm:text-sm font-bold text-white group-hover:text-[#ff5500] transition-colors truncate">
-                      {project.name}
-                    </h3>
-                    <span className="hidden sm:inline text-xs font-bold text-[#ff5500] tabular-nums whitespace-nowrap shrink-0">
-                      ৳{project.newPrice.toLocaleString()}
-                    </span>
-                  </div>
-                </article>
-              ))}
+                    <div className="border-t border-[#242424] bg-[#111111] px-2.5 py-2 sm:px-4 sm:py-3 space-y-1.5">
+                      <div className="flex items-center justify-between gap-1.5 sm:gap-3">
+                        <h3 className="text-[11px] sm:text-sm font-bold text-white group-hover:text-[#ff5500] transition-colors truncate">
+                          {project.name}
+                        </h3>
+                        <span className="hidden sm:inline text-xs font-bold text-[#ff5500] tabular-nums whitespace-nowrap shrink-0">
+                          ৳{project.newPrice.toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between gap-1.5">
+                        {demoUrl ? (
+                          <a
+                            href={demoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1 rounded-md border border-[#ff5500]/60 bg-[#1a100a] px-2 py-0.5 sm:px-2.5 sm:py-1 text-[9.5px] sm:text-[11px] font-bold text-[#ff7333] hover:bg-[#ff5500] hover:text-white transition-colors whitespace-nowrap"
+                          >
+                            <span>ডেমো লিংক</span>
+                            <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedProject(project);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border border-[#2d2d2d] bg-[#181818] px-2 py-0.5 sm:px-2.5 sm:py-1 text-[9.5px] sm:text-[11px] font-bold text-[#d4d4d4] hover:border-[#ff5500] hover:text-white transition-colors cursor-pointer whitespace-nowrap"
+                          >
+                            <span>ডেমো লিংক</span>
+                            <ExternalLink className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-[#ff5500]" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -536,50 +565,86 @@ export default function App() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
-              {filteredAllProjects.map((project) => (
-                <article
-                  key={`all-${project.id}`}
-                  onClick={() => setSelectedProject(project)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      setSelectedProject(project);
-                    }
-                  }}
-                  className="group cursor-pointer overflow-hidden rounded-xl border border-[#2b2b2b] bg-[#141414] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#ff5500]"
-                >
-                  <ProjectPreview
-                    variant={project.previewVariant}
-                    title={project.name}
-                    imageUrl={project.imageUrl}
-                  />
-                  <div className="p-4 border-t border-[#242424] bg-[#111111]">
-                    <div className="flex items-center justify-between gap-2 text-xs text-[#9e9e9e] mb-1.5">
-                      <span className="font-bold text-[#ff5500]">
-                        {project.categoryName} · {project.deliveryTime}
-                      </span>
-                      <span className="tabular-nums">
-                        {project.oldPrice > project.newPrice && (
-                          <span className="line-through mr-1.5 text-[#737373]">
-                            ৳{project.oldPrice.toLocaleString()}
+              {filteredAllProjects.map((project) => {
+                const demoUrl = getSafeDemoUrl(project.demoUrl);
+                return (
+                  <article
+                    key={`all-${project.id}`}
+                    onClick={() => setSelectedProject(project)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedProject(project);
+                      }
+                    }}
+                    className="group cursor-pointer overflow-hidden rounded-xl border border-[#2b2b2b] bg-[#141414] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#ff5500]"
+                  >
+                    <ProjectPreview
+                      variant={project.previewVariant}
+                      title={project.name}
+                      imageUrl={project.imageUrl}
+                    />
+                    <div className="p-4 border-t border-[#242424] bg-[#111111] flex flex-col justify-between">
+                      <div>
+                        <div className="flex items-center justify-between gap-2 text-xs text-[#9e9e9e] mb-1.5">
+                          <span className="font-bold text-[#ff5500]">
+                            {project.categoryName} · {project.deliveryTime}
                           </span>
+                          <span className="tabular-nums">
+                            {project.oldPrice > project.newPrice && (
+                              <span className="line-through mr-1.5 text-[#737373]">
+                                ৳{project.oldPrice.toLocaleString()}
+                              </span>
+                            )}
+                            <span className="text-white font-bold">
+                              ৳{project.newPrice.toLocaleString()}
+                            </span>
+                          </span>
+                        </div>
+                        <h3 className="text-base font-bold text-white group-hover:text-[#ff5500] transition-colors">
+                          {project.name}
+                        </h3>
+                        <p className="mt-1.5 text-xs sm:text-sm text-[#bdbdbd] line-clamp-2 leading-relaxed">
+                          {project.summary}
+                        </p>
+                      </div>
+
+                      <div className="mt-3 pt-3 border-t border-[#1e1e1e] flex items-center justify-between gap-2">
+                        {demoUrl ? (
+                          <a
+                            href={demoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-[#ff5500]/70 bg-[#1a100a] px-3 py-1.5 text-xs font-bold text-[#ff7333] hover:bg-[#ff5500] hover:text-white transition-colors"
+                          >
+                            <span>ডেমো লিংক</span>
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedProject(project);
+                            }}
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-[#2c2c2c] bg-[#181818] px-3 py-1.5 text-xs font-bold text-[#e0e0e0] hover:border-[#ff5500] hover:text-white transition-colors cursor-pointer"
+                          >
+                            <span>ডেমো লিংক</span>
+                            <ExternalLink className="h-3.5 w-3.5 text-[#ff5500]" />
+                          </button>
                         )}
-                        <span className="text-white font-bold">
-                          ৳{project.newPrice.toLocaleString()}
+                        <span className="text-xs font-semibold text-[#b8b8b8] group-hover:text-white inline-flex items-center gap-1">
+                          <span>বিস্তারিত</span>
+                          <ArrowRight className="h-3.5 w-3.5 text-[#ff5500]" />
                         </span>
-                      </span>
+                      </div>
                     </div>
-                    <h3 className="text-base font-bold text-white group-hover:text-[#ff5500] transition-colors">
-                      {project.name}
-                    </h3>
-                    <p className="mt-1.5 text-xs sm:text-sm text-[#bdbdbd] line-clamp-2 leading-relaxed">
-                      {project.summary}
-                    </p>
-                  </div>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           </div>
         </section>
@@ -646,6 +711,7 @@ export default function App() {
         siteSettings={siteSettings}
         onClose={() => setInfoModalMode(null)}
       />
+      <LivePurchaseNotification products={products} />
     </div>
   );
 }

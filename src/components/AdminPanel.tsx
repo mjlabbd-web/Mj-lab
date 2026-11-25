@@ -109,6 +109,7 @@ export function AdminPanel({onBackToUserPanel}: AdminPanelProps) {
   const [prodNewPrice, setProdNewPrice] = useState('');
   const [prodStock, setProdStock] = useState('10');
   const [prodImageUrl, setProdImageUrl] = useState('');
+  const [prodDemoUrl, setProdDemoUrl] = useState('');
   const [prodVariant, setProdVariant] = useState<PreviewVariant>('ecommerce');
   const [prodDelivery, setProdDelivery] = useState('2 Days Delivery');
   const [prodSummary, setProdSummary] = useState('');
@@ -294,6 +295,7 @@ export function AdminPanel({onBackToUserPanel}: AdminPanelProps) {
     setProdNewPrice('7500');
     setProdStock('10');
     setProdImageUrl('');
+    setProdDemoUrl('');
     setProdVariant('ecommerce');
     setProdDelivery('2 Days Delivery');
     setProdSummary('');
@@ -309,6 +311,7 @@ export function AdminPanel({onBackToUserPanel}: AdminPanelProps) {
     setProdNewPrice(String(product.newPrice));
     setProdStock(String(product.stock));
     setProdImageUrl(product.imageUrl);
+    setProdDemoUrl(product.demoUrl || '');
     setProdVariant(product.previewVariant);
     setProdDelivery(product.deliveryTime);
     setProdSummary(product.summary);
@@ -327,6 +330,7 @@ export function AdminPanel({onBackToUserPanel}: AdminPanelProps) {
       newPrice: Number(prodNewPrice) || 0,
       stock: Number(prodStock) || 0,
       imageUrl: prodImageUrl.trim(),
+      demoUrl: prodDemoUrl.trim(),
       previewVariant: prodVariant,
       deliveryTime: prodDelivery.trim(),
       summary: prodSummary.trim(),
@@ -2049,6 +2053,19 @@ alter publication supabase_realtime add table persona_store_state;`}
                   </button>
                 </div>
               )}
+
+              <div>
+                <label className="block text-xs text-[#cccccc] mb-1">
+                  ডেমো লিংক (Demo Link URL)
+                </label>
+                <input
+                  type="text"
+                  value={prodDemoUrl}
+                  onChange={(e) => setProdDemoUrl(e.target.value)}
+                  placeholder="https://example.com"
+                  className="w-full rounded-lg border border-[#2e2e2e] bg-[#0e0e0e] px-3 py-2 text-xs text-white"
+                />
+              </div>
 
               <div>
                 <label className="block text-xs text-[#cccccc] mb-1">সংক্ষিপ্ত বিবরণ</label>
